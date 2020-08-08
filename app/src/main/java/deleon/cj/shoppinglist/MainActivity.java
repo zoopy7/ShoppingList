@@ -19,6 +19,9 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.firebase.ui.database.FirebaseRecyclerAdapter;
+import com.firebase.ui.database.FirebaseRecyclerOptions;
+import com.firebase.ui.database.SnapshotParser;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -46,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseReference shoppingListNodeReference;
     private DatabaseReference itemNodeReference;
     private DatabaseReference uniqueIDNodeReference;
+    private FirebaseRecyclerAdapter firebaseRecyclerAdapter;
 
     private List<ShoppingItem> shoppingItemList = new ArrayList<>();
     private int id;
@@ -63,11 +67,39 @@ public class MainActivity extends AppCompatActivity {
         uniqueIDNodeReference = firebaseDatabase.getReference("UniqueID");
 
         recyclerView = findViewById(R.id.recyclerView);
-        //recyclerView.setHasFixedSize(true);
+        recyclerView.setHasFixedSize(true);
 
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.addItemDecoration(new DividerItemDecoration(getApplicationContext(), DividerItemDecoration.VERTICAL));
+
+
+        FirebaseRecyclerOptions<ShoppingItem> options = new FirebaseRecyclerOptions.Builder<ShoppingItem>()
+                .setQuery(shoppingListNodeReference, new SnapshotParser<ShoppingItem>() {
+                    @NonNull
+                    @Override
+                    public ShoppingItem parseSnapshot(@NonNull DataSnapshot snapshot) {
+                        return new ShoppingItem(snapshot.child("id").getValue(int.class),
+                                snapshot.child("item").getValue(String.class));
+                    }
+                }).build();
+
+        firebaseRecyclerAdapter = new FirebaseRecyclerAdapter<ShoppingItem, ViewHolder>(options) {
+            @Override
+            protected void onBindViewHolder(@NonNull ViewHolder holder, int position, @NonNull ShoppingItem model) {
+                holder.txtItemName.setText(model.item);
+            }
+
+            @NonNull
+            @Override
+            public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+                // Create a new view
+                LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+                View v = inflater.inflate(R.layout.items, parent, false);
+                return new ViewHolder(v);
+            }
+        };
+
 
         firebaseDatabase.getReference().child("ShoppingList").addValueEventListener(new ValueEventListener() {
             @Override
@@ -79,7 +111,8 @@ public class MainActivity extends AppCompatActivity {
                 }
                 shoppingListNodeReference.removeEventListener(this);
                 adapter = new ListAdapter(shoppingItemList);
-                recyclerView.setAdapter(adapter);
+                //recyclerView.setAdapter(adapter);
+                recyclerView.setAdapter(firebaseRecyclerAdapter);
             }
 
             @Override
@@ -120,7 +153,8 @@ public class MainActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 ShoppingItem shoppingItem = new ShoppingItem(id, Objects.requireNonNull(textViewAddItem.getText()).toString());
                                 shoppingItemList.add(shoppingItem);
-                                adapter.notifyItemInserted(shoppingItemList.size());
+//                                adapter.notifyItemInserted(shoppingItemList.size());
+                                firebaseRecyclerAdapter.notifyItemInserted(shoppingItemList.size());
 
                                 itemNodeReference = shoppingListNodeReference.child(shoppingItem.item + " " + shoppingItem.id);
                                 itemNodeReference.setValue(shoppingItem).addOnCompleteListener(completeAddingItemListener);
@@ -152,7 +186,8 @@ public class MainActivity extends AppCompatActivity {
                     public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                         ShoppingItem item = shoppingItemList.get(viewHolder.getAdapterPosition());
                         shoppingItemList.remove(viewHolder.getAdapterPosition());
-                        adapter.notifyItemRemoved(viewHolder.getAdapterPosition());
+//                        adapter.notifyItemRemoved(viewHolder.getAdapterPosition());
+                        firebaseRecyclerAdapter.notifyItemRemoved(viewHolder.getAdapterPosition());
 
                         String name = String.format("%s %d",item.item,item.id);
                         shoppingListNodeReference.child(name).removeValue();
@@ -164,6 +199,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        firebaseRecyclerAdapter.startListening();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        firebaseRecyclerAdapter.stopListening();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
