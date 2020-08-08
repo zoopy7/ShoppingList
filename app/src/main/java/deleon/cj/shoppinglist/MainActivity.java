@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseReference itemNodeReference;
     private DatabaseReference uniqueIDNodeReference;
 
-    private List<String> input = new ArrayList<>();
+    private List<ShoppingItem> shoppingItemList = new ArrayList<>();
     private int id;
 
     @Override
@@ -57,22 +57,17 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        // Initalize Firebase components
+        // Initialize Firebase components
         firebaseDatabase = FirebaseDatabase.getInstance();
         shoppingListNodeReference = firebaseDatabase.getReference("ShoppingList");
-        uniqueIDNodeReference = firebaseDatabase.getReference("ID");
-
+        uniqueIDNodeReference = firebaseDatabase.getReference("UniqueID");
 
         recyclerView = findViewById(R.id.recyclerView);
-        recyclerView.setHasFixedSize(true);
+        //recyclerView.setHasFixedSize(true);
 
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.addItemDecoration(new DividerItemDecoration(getApplicationContext(), DividerItemDecoration.VERTICAL));
-
-//        for (int i = 0; i < 10; i++) {
-//            input.add("Test " + i);
-//        }
 
         firebaseDatabase.getReference().child("ShoppingList").addValueEventListener(new ValueEventListener() {
             @Override
@@ -80,10 +75,10 @@ public class MainActivity extends AppCompatActivity {
                 for (DataSnapshot child:
                      snapshot.getChildren()) {
                     ShoppingItem item = child.getValue(ShoppingItem.class);
-                    input.add(item.item);
+                    shoppingItemList.add(item);
                 }
                 shoppingListNodeReference.removeEventListener(this);
-                adapter = new ListAdapter(input);
+                adapter = new ListAdapter(shoppingItemList);
                 recyclerView.setAdapter(adapter);
             }
 
@@ -123,11 +118,10 @@ public class MainActivity extends AppCompatActivity {
                         .setPositiveButton("Add", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                input.add(Objects.requireNonNull(textViewAddItem.getText()).toString());
-                                adapter.notifyItemInserted(input.size());
-
-
                                 ShoppingItem shoppingItem = new ShoppingItem(id, Objects.requireNonNull(textViewAddItem.getText()).toString());
+                                shoppingItemList.add(shoppingItem);
+                                adapter.notifyItemInserted(shoppingItemList.size());
+
                                 itemNodeReference = shoppingListNodeReference.child(shoppingItem.item + " " + shoppingItem.id);
                                 itemNodeReference.setValue(shoppingItem).addOnCompleteListener(completeAddingItemListener);
                                 id++;
@@ -156,14 +150,20 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                        input.remove(viewHolder.getAdapterPosition());
+                        ShoppingItem item = shoppingItemList.get(viewHolder.getAdapterPosition());
+                        shoppingItemList.remove(viewHolder.getAdapterPosition());
                         adapter.notifyItemRemoved(viewHolder.getAdapterPosition());
+
+                        String name = String.format("%s %d",item.item,item.id);
+                        shoppingListNodeReference.child(name).removeValue();
 
                     }
                 };
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleItemTouchCallback);
         itemTouchHelper.attachToRecyclerView(recyclerView);
     }
+
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

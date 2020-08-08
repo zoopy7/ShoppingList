@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> {
-    private List<String> values;
+    private List<ShoppingItem> values;
 
     public class ViewHolder extends RecyclerView.ViewHolder{
         public View layout;
@@ -24,7 +24,7 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> {
         }
     }
 
-    public void add(int position, String item){
+    public void add(int position, ShoppingItem item){
         values.add(position, item);
         notifyItemInserted(position);
     }
@@ -34,7 +34,7 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> {
         notifyItemRemoved(position);
     }
 
-    public ListAdapter(List<String> dataset){
+    public ListAdapter(List<ShoppingItem> dataset){
         values = dataset;
     }
 
@@ -54,8 +54,8 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> {
     public void onBindViewHolder(@NonNull final ListAdapter.ViewHolder holder, int position) {
         // Get element from your dataset at this position
         // replace the contents of the view with that element
-        final String name = values.get(position);
-        holder.txtItemName.setText(name);
+        ShoppingItem item = values.get(position);
+        holder.txtItemName.setText(item.item);
 //        holder.txtItemName.setOnClickListener(new View.OnClickListener() {
 //            @Override
 //            public void onClick(View v) {
